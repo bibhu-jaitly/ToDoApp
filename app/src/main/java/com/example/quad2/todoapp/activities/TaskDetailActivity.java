@@ -96,6 +96,12 @@ public class TaskDetailActivity extends AppCompatActivity {
     }
   }
 
+  @Override
+  protected void onDestroy() {
+    super.onDestroy();
+    realm.close();
+  }
+
   private void setViews() {
     taskName.setText(title);
     taskDescription.setText(description);
