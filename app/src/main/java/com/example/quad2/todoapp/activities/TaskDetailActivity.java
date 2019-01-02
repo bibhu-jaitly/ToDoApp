@@ -39,9 +39,8 @@ public class TaskDetailActivity extends AppCompatActivity {
   Button completeBtn;
   private ProgressDialog progressDialog;
 
-  private String taskId, title, description;
+  private String taskId;
   private boolean isCompleted;
-  private long timeStamp;
 
   private TaskDetailViewModel viewModel;
   private Task task;
@@ -88,23 +87,22 @@ public class TaskDetailActivity extends AppCompatActivity {
 
   @Override
   protected void onDestroy() {
+    viewModel.clearCompositeDisposable();
     super.onDestroy();
   }
 
   private void setViews() {
-    viewModel.getTask(taskId).observe(this, new Observer<Task>() {
-      @Override public void onChanged(@Nullable Task taskData) {
-        if (taskData != null) {
-          task = taskData;
-          taskName.setText(task.getTaskName());
-          taskDescription.setText(task.getTaskDescription());
-          timeCreated.setText(SystemUtils.getDate(task.getCreatedTime()));
-          isCompleted = task.isCompleted();
-          if (task.isCompleted()) {
-            status.setText("Completed");
-          } else {
-            status.setText("Pending");
-          }
+    viewModel.getTask(taskId).observe(this, taskData -> {
+      if (taskData != null) {
+        task = taskData;
+        taskName.setText(task.getTaskName());
+        taskDescription.setText(task.getTaskDescription());
+        timeCreated.setText(SystemUtils.getDate(task.getCreatedTime()));
+        isCompleted = task.isCompleted();
+        if (task.isCompleted()) {
+          status.setText("Completed");
+        } else {
+          status.setText("Pending");
         }
       }
     });
@@ -115,20 +113,12 @@ public class TaskDetailActivity extends AppCompatActivity {
     if (!isCompleted) {
       Builder builder = new Builder(this);
       builder.setMessage("Is this Task completed?")
-          .setPositiveButton("Yes", new OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-              task.setCompleted(true);
-              viewModel.updateTask(task);
-              dialog.dismiss();
-            }
+          .setPositiveButton("Yes", (dialog, which) -> {
+            task.setCompleted(true);
+            viewModel.updateTask(task);
+            dialog.dismiss();
           })
-          .setNegativeButton("No", new OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-              dialog.dismiss();
-            }
-          });
+          .setNegativeButton("No", (dialog, which) -> dialog.dismiss());
       AlertDialog dialog = builder.create();
       dialog.show();
     } else {
@@ -141,20 +131,12 @@ public class TaskDetailActivity extends AppCompatActivity {
     if (isCompleted) {
       Builder builder = new Builder(this);
       builder.setMessage("Is this Task still pending?")
-          .setPositiveButton("Yes", new OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-              task.setCompleted(false);
-              viewModel.updateTask(task);
-              dialog.dismiss();
-            }
+          .setPositiveButton("Yes", (dialog, which) -> {
+            task.setCompleted(false);
+            viewModel.updateTask(task);
+            dialog.dismiss();
           })
-          .setNegativeButton("No", new OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-              dialog.dismiss();
-            }
-          });
+          .setNegativeButton("No", (dialog, which) -> dialog.dismiss());
       AlertDialog dialog = builder.create();
       dialog.show();
     } else {
@@ -195,17 +177,7 @@ public class TaskDetailActivity extends AppCompatActivity {
     Button addBtn = dialog.findViewById(R.id.add_btn);
     addBtn.setText("Save");
     Button cancelBtn = dialog.findViewById(R.id.cancel_btn);
-    addBtn.setOnClickListener(new View.OnClickListener() {
-      @Override
-      public void onClick(View v) {
-        handleEditBtnClick(taskName, taskDescription, dialog);
-      }
-    });
-    cancelBtn.setOnClickListener(new View.OnClickListener() {
-      @Override
-      public void onClick(View v) {
-        dialog.dismiss();
-      }
-    });
+    addBtn.setOnClickListener(v -> handleEditBtnClick(taskName, taskDescription, dialog));
+    cancelBtn.setOnClickListener(v -> dialog.dismiss());
   }
 }

@@ -39,13 +39,11 @@ public class TaskListActivity extends AppCompatActivity {
   private TaskAdapter adapter;
   private ProgressDialog progressDialog;
   private TaskListViewModel viewModel;
-  private CompositeDisposable disposable;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_task_list);
-    disposable = new CompositeDisposable();
     viewModel = ViewModelProviders.of(this).get(TaskListViewModel.class);
     ButterKnife.bind(this);
     progressDialog = new ProgressDialog(this);
@@ -63,25 +61,7 @@ public class TaskListActivity extends AppCompatActivity {
   @Override
   protected void onDestroy() {
     super.onDestroy();
-    Observable.just(true).subscribeOn(Schedulers.computation()).observeOn(Schedulers.computation())
-        .subscribe(new Observer<Boolean>() {
-          @Override public void onSubscribe(Disposable d) {
-            disposable.clear();
-          }
-
-          @Override public void onNext(Boolean aBoolean) {
-
-          }
-
-          @Override public void onError(Throwable e) {
-
-          }
-
-          @Override public void onComplete() {
-
-          }
-        });
-    //realm.close();
+    viewModel.clearCompositeDisposable();
   }
 
   @OnClick(R.id.fab)
@@ -90,15 +70,10 @@ public class TaskListActivity extends AppCompatActivity {
   }
 
   private void setTaskRv() {
-    // printdata();
     LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
     taskRv.setLayoutManager(linearLayoutManager);
     taskRv.setAdapter(adapter);
-    viewModel.getAllTasks().observe(this, new android.arch.lifecycle.Observer<List<Task>>() {
-      @Override public void onChanged(@Nullable List<Task> tasks) {
-        adapter.setTasks(tasks);
-      }
-    });
+    viewModel.getAllTasks().observe(this, tasks -> adapter.setTasks(tasks));
   }
 
   private void showAddTaskDialog() {
@@ -110,18 +85,8 @@ public class TaskListActivity extends AppCompatActivity {
     final EditText taskDescription = dialog.findViewById(R.id.task_desc);
     Button addBtn = dialog.findViewById(R.id.add_btn);
     Button cancelBtn = dialog.findViewById(R.id.cancel_btn);
-    addBtn.setOnClickListener(new OnClickListener() {
-      @Override
-      public void onClick(View v) {
-        handleAddBtnClick(taskName, taskDescription, dialog);
-      }
-    });
-    cancelBtn.setOnClickListener(new OnClickListener() {
-      @Override
-      public void onClick(View v) {
-        dialog.dismiss();
-      }
-    });
+    addBtn.setOnClickListener(v -> handleAddBtnClick(taskName, taskDescription, dialog));
+    cancelBtn.setOnClickListener(v -> dialog.dismiss());
   }
 
   private void handleAddBtnClick(EditText name, EditText description, final AlertDialog dialog) {
@@ -138,9 +103,5 @@ public class TaskListActivity extends AppCompatActivity {
     } else if (!SystemUtils.isStringValid(descString)) {
       description.setError("Description can't be empty!");
     }
-  }
-
-  private void printdata() {
-
   }
 }
