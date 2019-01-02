@@ -2,7 +2,6 @@ package com.example.quad2.todoapp.adapters;
 
 import android.content.Context;
 import android.content.Intent;
-import android.support.annotation.Nullable;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -17,28 +16,23 @@ import com.example.quad2.todoapp.activities.TaskDetailActivity;
 import com.example.quad2.todoapp.adapters.TaskAdapter.ViewHolder;
 import com.example.quad2.todoapp.models.Task;
 import com.example.quad2.todoapp.utils.SystemUtils;
-import io.realm.OrderedRealmCollection;
-import io.realm.RealmRecyclerViewAdapter;
-import java.sql.Timestamp;
-import java.util.Date;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by quad2 on 9/1/18.
  */
 
-public class TaskAdapter extends RealmRecyclerViewAdapter<Task, ViewHolder> {
-
+public class TaskAdapter extends RecyclerView.Adapter<ViewHolder> {
 
   private Context context;
-  private OrderedRealmCollection<Task> tasks;
+  private List<Task> tasks = new ArrayList<>();
 
-  public TaskAdapter(
-      @Nullable OrderedRealmCollection<Task> data, Context context) {
-    super(data, true, true);
-    this.tasks = data;
+  public TaskAdapter(Context context) {
+    //super(data, true, true);
+    //this.tasks = data;
     this.context = context;
   }
-
 
   @Override
   public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
@@ -59,21 +53,22 @@ public class TaskAdapter extends RealmRecyclerViewAdapter<Task, ViewHolder> {
       } else {
         holder.status.setText("Pending");
       }
-
     }
     holder.taskCard.setOnClickListener(new OnClickListener() {
       @Override
       public void onClick(View v) {
         Intent intent = new Intent(context, TaskDetailActivity.class);
         intent.putExtra("taskId", task.getTaskId());
-        intent.putExtra("taskName", task.getTaskName());
-        intent.putExtra("description", task.getTaskDescription());
-        intent.putExtra("taskStatus", task.isCompleted());
-        intent.putExtra("timeStamp", task.getCreatedTime());
         context.startActivity(intent);
       }
     });
+  }
 
+  @Override public int getItemCount() {
+    if (tasks != null) {
+      return tasks.size();
+    }
+    return 0;
   }
 
   class ViewHolder extends RecyclerView.ViewHolder {
@@ -95,4 +90,8 @@ public class TaskAdapter extends RealmRecyclerViewAdapter<Task, ViewHolder> {
     }
   }
 
+  public void setTasks(List<Task> list){
+    tasks = list;
+    notifyDataSetChanged();
+  }
 }

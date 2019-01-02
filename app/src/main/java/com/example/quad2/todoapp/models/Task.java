@@ -1,19 +1,25 @@
 package com.example.quad2.todoapp.models;
 
-import io.realm.RealmObject;
-import io.realm.annotations.PrimaryKey;
-import io.realm.annotations.Required;
+import android.arch.persistence.room.ColumnInfo;
+import android.arch.persistence.room.Entity;
+import android.arch.persistence.room.PrimaryKey;
+import android.support.annotation.NonNull;
 
 /**
  * Created by quad2 on 9/1/18.
  */
 
-public class Task extends RealmObject {
+@Entity(tableName = "task")
+public class Task {
 
   @PrimaryKey
+  @NonNull
   private String taskId;
-  @Required
+
+  @ColumnInfo(name = "taskName")
   private String taskName;
+
+  @ColumnInfo
   private long createdTime;
   private String taskDescription;
   private boolean completed;
@@ -21,9 +27,10 @@ public class Task extends RealmObject {
   public Task() {
   }
 
-  public void setAttribute( String taskName, long createdTime,
+  public void setAttribute(String taskId, String taskName, long createdTime,
       String taskDescription,
       boolean completed) {
+    this.taskId = taskId;
     this.taskName = taskName;
     this.createdTime = createdTime;
     this.taskDescription = taskDescription;

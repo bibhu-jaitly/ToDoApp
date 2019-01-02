@@ -1,13 +1,14 @@
 package com.example.quad2.todoapp.activities;
 
 import android.app.ProgressDialog;
+import android.arch.lifecycle.ViewModelProviders;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AlertDialog.Builder;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -20,9 +21,13 @@ import com.example.quad2.todoapp.R;
 import com.example.quad2.todoapp.adapters.TaskAdapter;
 import com.example.quad2.todoapp.models.Task;
 import com.example.quad2.todoapp.utils.SystemUtils;
-import io.realm.Realm;
-import io.realm.Realm.Transaction;
-import io.realm.RealmResults;
+import com.example.quad2.todoapp.viewModels.TaskListViewModel;
+import io.reactivex.Observable;
+import io.reactivex.Observer;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
+import java.util.List;
 import java.util.UUID;
 
 public class TaskListActivity extends AppCompatActivity {
@@ -31,23 +36,22 @@ public class TaskListActivity extends AppCompatActivity {
   RecyclerView taskRv;
   @BindView(R.id.no_task_text)
   TextView noTaskText;
-  private Realm realm;
-  private RealmResults<Task> tasks;
   private TaskAdapter adapter;
   private ProgressDialog progressDialog;
+  private TaskListViewModel viewModel;
+  private CompositeDisposable disposable;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_task_list);
+    disposable = new CompositeDisposable();
+    viewModel = ViewModelProviders.of(this).get(TaskListViewModel.class);
     ButterKnife.bind(this);
     progressDialog = new ProgressDialog(this);
     progressDialog.setMessage("Please Wait...");
     progressDialog.setCancelable(false);
-    realm = Realm.getDefaultInstance();
-    realm.setAutoRefresh(true);
-    tasks = realm.where(Task.class).findAll().sort("createdTime");
-    adapter = new TaskAdapter(tasks, this);
+    adapter = new TaskAdapter(this);
   }
 
   @Override
@@ -59,7 +63,25 @@ public class TaskListActivity extends AppCompatActivity {
   @Override
   protected void onDestroy() {
     super.onDestroy();
-    realm.close();
+    Observable.just(true).subscribeOn(Schedulers.computation()).observeOn(Schedulers.computation())
+        .subscribe(new Observer<Boolean>() {
+          @Override public void onSubscribe(Disposable d) {
+            disposable.clear();
+          }
+
+          @Override public void onNext(Boolean aBoolean) {
+
+          }
+
+          @Override public void onError(Throwable e) {
+
+          }
+
+          @Override public void onComplete() {
+
+          }
+        });
+    //realm.close();
   }
 
   @OnClick(R.id.fab)
@@ -68,11 +90,15 @@ public class TaskListActivity extends AppCompatActivity {
   }
 
   private void setTaskRv() {
-    printdata();
+    // printdata();
     LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
     taskRv.setLayoutManager(linearLayoutManager);
     taskRv.setAdapter(adapter);
-    adapter.notifyDataSetChanged();
+    viewModel.getAllTasks().observe(this, new android.arch.lifecycle.Observer<List<Task>>() {
+      @Override public void onChanged(@Nullable List<Task> tasks) {
+        adapter.setTasks(tasks);
+      }
+    });
   }
 
   private void showAddTaskDialog() {
@@ -102,20 +128,11 @@ public class TaskListActivity extends AppCompatActivity {
     final String nameString = name.getText().toString();
     final String descString = description.getText().toString();
     if (SystemUtils.isStringValid(nameString) && SystemUtils.isStringValid(descString)) {
-      progressDialog.show();
-      realm.executeTransactionAsync(new Transaction() {
-        @Override
-        public void execute(Realm realm) {
-          dialog.dismiss();
-          Task task = realm.createObject(Task.class, UUID.randomUUID().toString());
-          task.setAttribute(nameString, System.currentTimeMillis(), descString, false);
-        }
-      });
-      realm.refresh();
-      //Log.d("taskChk", tasks.);
-      adapter.notifyDataSetChanged();
-      printdata();
-      progressDialog.dismiss();
+      Task task = new Task();
+      task.setAttribute(UUID.randomUUID().toString(), nameString, System.currentTimeMillis(),
+          descString, false);
+      viewModel.addTask(task);
+      dialog.dismiss();
     } else if (!SystemUtils.isStringValid(nameString)) {
       name.setError("Enter valid title for task!");
     } else if (!SystemUtils.isStringValid(descString)) {
@@ -124,10 +141,6 @@ public class TaskListActivity extends AppCompatActivity {
   }
 
   private void printdata() {
-    RealmResults<Task> results = realm.where(Task.class).findAll().sort("createdTime");
-    for (Task task : results) {
-      Log.d("saveChk", task.toString());
-    }
-  }
 
+  }
 }

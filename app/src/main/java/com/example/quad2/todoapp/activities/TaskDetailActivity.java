@@ -1,9 +1,12 @@
 package com.example.quad2.todoapp.activities;
 
 import android.app.ProgressDialog;
+import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AlertDialog.Builder;
 import android.support.v7.app.AppCompatActivity;
@@ -20,10 +23,7 @@ import butterknife.OnClick;
 import com.example.quad2.todoapp.R;
 import com.example.quad2.todoapp.models.Task;
 import com.example.quad2.todoapp.utils.SystemUtils;
-import io.realm.Realm;
-import io.realm.Realm.Transaction;
-import java.sql.Timestamp;
-import java.util.Date;
+import com.example.quad2.todoapp.viewModels.TaskDetailViewModel;
 
 public class TaskDetailActivity extends AppCompatActivity {
 
@@ -43,16 +43,17 @@ public class TaskDetailActivity extends AppCompatActivity {
   private boolean isCompleted;
   private long timeStamp;
 
-  private Realm realm;
+  private TaskDetailViewModel viewModel;
+  private Task task;
+
+  //private Realm realm;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_task_detail);
     ButterKnife.bind(this);
-
-    realm = Realm.getDefaultInstance();
-
+    viewModel = ViewModelProviders.of(this).get(TaskDetailViewModel.class);
     progressDialog = new ProgressDialog(this);
     progressDialog.setMessage("Please Wait...");
     progressDialog.setCancelable(false);
@@ -60,10 +61,6 @@ public class TaskDetailActivity extends AppCompatActivity {
     Bundle bundle = getIntent().getExtras();
     if (bundle != null) {
       taskId = bundle.getString("taskId");
-      title = bundle.getString("taskName");
-      description = bundle.getString("description");
-      timeStamp = bundle.getLong("timeStamp");
-      isCompleted = bundle.getBoolean("taskStatus");
     }
 
     setViews();
@@ -80,15 +77,8 @@ public class TaskDetailActivity extends AppCompatActivity {
   public boolean onOptionsItemSelected(MenuItem item) {
     int id = item.getItemId();
     if (id == R.id.action_delete) {
-      realm.executeTransactionAsync(new Transaction() {
-        @Override
-        public void execute(Realm realm) {
-          realm.where(Task.class).equalTo("taskId", taskId)
-              .findFirst()
-              .deleteFromRealm();
-        }
-      });
-      realm.refresh();
+      //code to be written here
+      viewModel.deleteTask(task);
       finish();
       return true;
     } else {
@@ -99,18 +89,25 @@ public class TaskDetailActivity extends AppCompatActivity {
   @Override
   protected void onDestroy() {
     super.onDestroy();
-    realm.close();
   }
 
   private void setViews() {
-    taskName.setText(title);
-    taskDescription.setText(description);
-    timeCreated.setText(SystemUtils.getDate(timeStamp));
-    if (isCompleted) {
-      status.setText("Completed");
-    } else {
-      status.setText("Pending");
-    }
+    viewModel.getTask(taskId).observe(this, new Observer<Task>() {
+      @Override public void onChanged(@Nullable Task taskData) {
+        if (taskData != null) {
+          task = taskData;
+          taskName.setText(task.getTaskName());
+          taskDescription.setText(task.getTaskDescription());
+          timeCreated.setText(SystemUtils.getDate(task.getCreatedTime()));
+          isCompleted = task.isCompleted();
+          if (task.isCompleted()) {
+            status.setText("Completed");
+          } else {
+            status.setText("Pending");
+          }
+        }
+      }
+    });
   }
 
   @OnClick(R.id.complete_btn)
@@ -121,18 +118,9 @@ public class TaskDetailActivity extends AppCompatActivity {
           .setPositiveButton("Yes", new OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-              progressDialog.show();
-              realm.executeTransactionAsync(new Transaction() {
-                @Override
-                public void execute(Realm realm) {
-                  Task task = realm.where(Task.class).equalTo("taskId", taskId).findFirst();
-                  task.setCompleted(true);
-                }
-              });
-              realm.refresh();
-              isCompleted = true;
-              progressDialog.dismiss();
-              setViews();
+              task.setCompleted(true);
+              viewModel.updateTask(task);
+              dialog.dismiss();
             }
           })
           .setNegativeButton("No", new OnClickListener() {
@@ -156,18 +144,9 @@ public class TaskDetailActivity extends AppCompatActivity {
           .setPositiveButton("Yes", new OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-              progressDialog.show();
-              realm.executeTransactionAsync(new Transaction() {
-                @Override
-                public void execute(Realm realm) {
-                  Task task = realm.where(Task.class).equalTo("taskId", taskId).findFirst();
-                  task.setCompleted(false);
-                }
-              });
-              realm.refresh();
-              isCompleted = false;
-              progressDialog.dismiss();
-              setViews();
+              task.setCompleted(false);
+              viewModel.updateTask(task);
+              dialog.dismiss();
             }
           })
           .setNegativeButton("No", new OnClickListener() {
@@ -193,21 +172,10 @@ public class TaskDetailActivity extends AppCompatActivity {
     final String nameString = name.getText().toString();
     final String descString = taskDescription.getText().toString();
     if (SystemUtils.isStringValid(nameString) && SystemUtils.isStringValid(descString)) {
-      title = nameString;
-      description = descString;
-      progressDialog.show();
-      realm.executeTransactionAsync(new Transaction() {
-        @Override
-        public void execute(Realm realm) {
-          dialog.dismiss();
-          Task task = realm.where(Task.class).equalTo("taskId", taskId).findFirst();
-          task.setTaskName(nameString);
-          task.setTaskDescription(descString);
-        }
-      });
-      realm.refresh();
-      setViews();
-      progressDialog.dismiss();
+      task.setTaskName(nameString);
+      task.setTaskDescription(descString);
+      viewModel.updateTask(task);
+      dialog.dismiss();
     } else if (!SystemUtils.isStringValid(nameString)) {
       name.setError("Enter valid title for task!");
     } else if (!SystemUtils.isStringValid(descString)) {
@@ -240,5 +208,4 @@ public class TaskDetailActivity extends AppCompatActivity {
       }
     });
   }
-
 }
